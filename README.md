@@ -13,6 +13,12 @@ source files ──tree-sitter──▶ AST nodes ──▶ PostgreSQL
 ```
 
 Supported languages: **JavaScript, TypeScript/TSX, Python, PHP, Java**. Queries are written once; each language has a small *profile* (`src/lang/*.ts`) that maps its grammar onto a common model.
+## Express Run
+
+```bash
+bun install
+bun run start                             # UI on http://127.0.0.1:3000 upload a project folder
+```
 
 ## Run
 
@@ -20,7 +26,7 @@ Supported languages: **JavaScript, TypeScript/TSX, Python, PHP, Java**. Queries 
 bun install
 docker compose up -d                      # optional: Postgres 16 (any Postgres works)
 export DATABASE_URL=postgres://sast:sast@localhost:5432/sast
-bun run start                             # UI on http://127.0.0.1:3000
+bun run start                             # UI on http://127.0.0.1:3000 upload a project folder
 bun run scan sample                       # or: CLI scan of a directory
 bun run test                              # regression test (in-memory store unless DATABASE_URL is set)
 ```
