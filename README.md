@@ -15,6 +15,8 @@ source files ──tree-sitter──▶ AST nodes ──▶ PostgreSQL
 Supported languages: **JavaScript, TypeScript/TSX, Python, PHP, Java**. Queries are written once; each language has a small *profile* (`src/lang/*.ts`) that maps its grammar onto a common model.
 ## Express Run
 
+Install (bun.js)[https://bun.com/docs/installation] and clone/download the repo.
+
 ```bash
 bun install
 bun run start                             # UI on http://127.0.0.1:3000 upload a project folder
