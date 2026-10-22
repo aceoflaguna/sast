@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sastql</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230e1116'/%3E%3Ctext x='16' y='22' font-family='monospace' font-size='17' font-weight='700' text-anchor='middle' fill='%235eead4'%3E%24%3C/text%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#0e1116; --panel:#151a22; --panel2:#1b212b; --line:#262e3a; --text:#d7dde6; --mute:#8b96a7; --accent:#5eead4;
+  --crit:#ff5c70; --high:#ff9f43; --med:#f7d154; --low:#6cb6ff; --info:#8b96a7;
+  --src:#4ade80; --prop:#6cb6ff; --call:#c084fc; --ret:#f0abfc; --sink:#ff5c70;
+  --mono: ui-monospace,"JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+  --sans: ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){ --bg:#f4f6f9; --panel:#fff; --panel2:#f0f3f7; --line:#dde3ea; --text:#1d2430; --mute:#667085; --accent:#0f766e;
+    --crit:#d92d46; --high:#d9730d; --med:#a77b00; --low:#2563eb; --src:#15803d; --prop:#2563eb; --call:#7e22ce; --ret:#a21caf; --sink:#d92d46; }
+}
+:root[data-theme="light"]{ --bg:#f4f6f9; --panel:#fff; --panel2:#f0f3f7; --line:#dde3ea; --text:#1d2430; --mute:#667085; --accent:#0f766e;
+  --crit:#d92d46; --high:#d9730d; --med:#a77b00; --low:#2563eb; --src:#15803d; --prop:#2563eb; --call:#7e22ce; --ret:#a21caf; --sink:#d92d46; }
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:14px/1.45 var(--sans);display:grid;grid-template-columns:260px 1fr;grid-template-rows:48px 1fr;grid-template-areas:"top top" "side main"}
+button,input,select,textarea{font:inherit;color:inherit}
+header{grid-area:top;display:flex;align-items:center;gap:12px;padding:0 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+.logo{font-family:var(--mono);font-weight:700;letter-spacing:-.02em;font-size:16px}
+.logo b{color:var(--accent)}
+.pill{font:11px var(--mono);padding:2px 8px;border:1px solid var(--line);border-radius:99px;color:var(--mute)}
+.spacer{flex:1}
+aside{grid-area:side;border-right:1px solid var(--line);background:var(--panel);overflow:auto;padding:12px}
+main{grid-area:main;display:flex;flex-direction:column;min-width:0;min-height:0}
+h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute);margin:4px 0 8px;font-weight:600}
+.btn{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:5px 11px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:#04201c;border-color:var(--accent);font-weight:600}
+.btn.sm{padding:2px 8px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:default}
+.proj{padding:8px 10px;border-radius:8px;cursor:pointer;border:1px solid transparent;margin-bottom:4px}
+.proj:hover{background:var(--panel2)}
+.proj.active{background:var(--panel2);border-color:var(--accent)}
+.proj .n{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.proj .m{font:11px var(--mono);color:var(--mute)}
+.tabs{display:flex;gap:2px;padding:0 12px;border-bottom:1px solid var(--line);background:var(--panel);align-items:center}
+.tab{padding:10px 14px;cursor:pointer;color:var(--mute);border-bottom:2px solid transparent}
+.tab.active{color:var(--text);border-color:var(--accent)}
+.tab .c{font:11px var(--mono);background:var(--panel2);border-radius:99px;padding:1px 7px;margin-left:6px}
+.pane{flex:1;min-height:0;display:none}
+.pane.active{display:flex}
+.split{display:grid;grid-template-columns:minmax(300px,40%) 1fr;width:100%;min-height:0}
+.col{overflow:auto;min-height:0}
+.col.left{border-right:1px solid var(--line)}
+.toolbar{display:flex;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);flex-wrap:wrap;align-items:center;position:sticky;top:0;background:var(--bg);z-index:2}
+.toolbar input,.toolbar select{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:5px 8px}
+.chip{font:11px var(--mono);padding:2px 8px;border-radius:99px;border:1px solid var(--line);cursor:pointer;user-select:none}
+.chip.on{border-color:currentColor}
+.sev-critical{color:var(--crit)}.sev-high{color:var(--high)}.sev-medium{color:var(--med)}.sev-low{color:var(--low)}.sev-info{color:var(--info)}
+.f{padding:10px 14px;border-bottom:1px solid var(--line);cursor:pointer;display:grid;grid-template-columns:10px 1fr;gap:10px}
+.f:hover{background:var(--panel)}
+.f.active{background:var(--panel2);box-shadow:inset 2px 0 var(--accent)}
+.dot{width:8px;height:8px;border-radius:50%;margin-top:6px;background:currentColor}
+.f .t{font-weight:600}
+.f .loc{font:12px var(--mono);color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.f .msg{color:var(--mute);font-size:12.5px;margin-top:2px}
+.detail{padding:16px}
+.detail h3{margin:0 0 4px;font-size:18px}
+.meta{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 14px}
+.path{position:relative;margin:8px 0 18px;padding-left:4px}
+.step{display:grid;grid-template-columns:22px 1fr;gap:10px;cursor:pointer;padding:6px 8px;border-radius:8px;position:relative}
+.step:hover,.step.active{background:var(--panel2)}
+.step:not(:last-child)::before{content:"";position:absolute;left:18px;top:26px;bottom:-8px;width:2px;background:var(--line)}
+.step .i{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font:700 11px var(--mono);color:#04120e;background:var(--c)}
+.step .k{font:600 11px var(--mono);text-transform:uppercase;color:var(--c);letter-spacing:.05em}
+.step .code{font:12.5px var(--mono);white-space:pre-wrap;word-break:break-all}
+.step .where{font:11px var(--mono);color:var(--mute)}
+.k-source{--c:var(--src)}.k-propagate{--c:var(--prop)}.k-call{--c:var(--call)}.k-return{--c:var(--ret)}.k-sink{--c:var(--sink)}.k-sanitizer{--c:var(--med)}
+.code-view{position:relative;border:1px solid var(--line);border-radius:8px;overflow:auto;max-height:46vh;background:var(--panel);font:12.5px/1.5 var(--mono)}
+.code-head{position:sticky;top:0;background:var(--panel2);padding:5px 10px;border-bottom:1px solid var(--line);font:12px var(--mono);color:var(--mute);z-index:1}
+.ln{display:grid;grid-template-columns:48px 1fr}
+.ln span:first-child{text-align:right;padding-right:10px;color:var(--mute);user-select:none;opacity:.7}
+.ln span:last-child{white-space:pre;padding-right:12px}
+.ln.hl-source{background:color-mix(in srgb,var(--src) 16%,transparent)}
+.ln.hl-propagate{background:color-mix(in srgb,var(--prop) 14%,transparent)}
+.ln.hl-call,.ln.hl-return{background:color-mix(in srgb,var(--call) 14%,transparent)}
+.ln.hl-sink{background:color-mix(in srgb,var(--sink) 18%,transparent)}
+.ln.focus{outline:1px solid var(--accent);outline-offset:-1px}
+.empty{margin:auto;text-align:center;color:var(--mute);padding:40px;max-width:520px}
+.empty h3{color:var(--text);margin:0 0 6px}
+.console{padding:14px;display:flex;flex-direction:column;gap:10px;width:100%;overflow:auto}
+textarea.q{width:100%;min-height:74px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;font:13px var(--mono);resize:vertical}
+.ex{display:flex;gap:6px;flex-wrap:wrap}
+.ex .chip{cursor:pointer}
+.ex .chip:hover{border-color:var(--accent);color:var(--accent)}
+table{border-collapse:collapse;width:100%}
+td,th{padding:5px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;font-size:12.5px}
+th{color:var(--mute);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+tr.row{cursor:pointer}tr.row:hover{background:var(--panel)}
+td.mono,.mono{font-family:var(--mono)}
+.ast{font:12.5px var(--mono);padding:10px 14px}
+.ast .nd{padding-left:16px;border-left:1px dotted var(--line);margin-left:6px}
+.ast .row{cursor:pointer;padding:1px 4px;border-radius:4px;white-space:nowrap}
+.ast .row:hover{background:var(--panel2)}
+.ast .fld{color:var(--call)}.ast .ty{color:var(--accent)}.ast .tx{color:var(--mute)}
+.ast .tw{display:inline-block;width:14px;color:var(--mute)}
+.qcard{border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:12px 14px;margin:0 14px 12px}
+.qcard h4{margin:0;font-size:15px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+pre.src{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;overflow:auto;max-height:340px;font:12px/1.5 var(--mono);margin:10px 0 0}
+dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:0;width:min(560px,94vw)}
+dialog::backdrop{background:rgba(0,0,0,.55)}
+dialog .hd{padding:14px 18px;border-bottom:1px solid var(--line);font-weight:600}
+dialog .bd{padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+dialog .ft{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end}
+dialog input[type=text],dialog select,dialog textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 9px}
+.seg{display:flex;gap:4px}.seg .btn.on{border-color:var(--accent);color:var(--accent)}
+.toast{position:fixed;bottom:16px;right:16px;background:var(--panel2);border:1px solid var(--line);padding:10px 14px;border-radius:8px;max-width:420px;z-index:10}
+.toast.err{border-color:var(--crit)}
+@media (max-width:860px){ body{grid-template-columns:1fr;grid-template-rows:48px auto 1fr;grid-template-areas:"top" "side" "main"} aside{max-height:150px;border-right:0;border-bottom:1px solid var(--line)} .split{grid-template-columns:1fr} .col.left{max-height:40vh;border-right:0;border-bottom:1px solid var(--line)} }
+</style>
+</head>
+<body>
+<header>
+  <span class="logo">sast<b>ql</b></span>
+  <span class="pill" id="storePill">…</span>
+  <span class="spacer"></span>
+  <button class="btn" id="scanBtn" disabled>Run scan</button>
+  <button class="btn" id="sarifBtn" disabled>SARIF</button>
+  <button class="btn sm" id="themeBtn" title="Toggle theme">◐</button>
+</header>
+
+<aside>
+  <h2>Projects</h2>
+  <div id="projects"></div>
+  <button class="btn primary" id="newBtn" style="width:100%;margin-top:8px">+ New project</button>
+</aside>
+
+<main>
+  <div class="tabs" id="tabs">
+    <div class="tab active" data-tab="findings">Findings<span class="c" id="cFind">0</span></div>
+    <div class="tab" data-tab="console">Query console</div>
+    <div class="tab" data-tab="ast">AST explorer</div>
+    <div class="tab" data-tab="queries">Queries<span class="c" id="cQ">0</span></div>
+  </div>
+
+  <div class="pane active" id="pane-findings">
+    <div class="split">
+      <div class="col left">
+        <div class="toolbar">
+          <span id="sevChips" style="display:flex;gap:6px"></span>
+          <select id="fQuery"><option value="">all queries</option></select>
+          <select id="fLang"><option value="">all languages</option></select>
+          <input id="fText" placeholder="filter file / text" style="flex:1;min-width:120px">
+        </div>
+        <div id="findList"></div>
+      </div>
+      <div class="col" id="findDetail"><div class="empty"><h3>No finding selected</h3>Select a finding to see the full source → sink path.</div></div>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-console">
+    <div class="split">
+      <div class="col left"><div class="console">
+        <div><b>jQuery-style AST query</b> <span style="color:var(--mute)">— Ctrl/⌘+Enter to run</span></div>
+        <textarea class="q" id="qExpr" spellcheck="false">$("Call[callee$='.query']").parent().closest("Func")</textarea>
+        <div class="ex" id="qEx"></div>
+        <div style="display:flex;gap:8px;align-items:center"><button class="btn primary" id="qRun">Run</button><span id="qInfo" style="color:var(--mute);font:12px var(--mono)"></span></div>
+        <div id="qHelp" style="color:var(--mute);font-size:12.5px">
+          <b>Selectors</b> <code>Type</code> · <code>Kind</code> (Call, Assign, Func, Ident, Str, Member, Return) · <code>a b</code> · <code>a &gt; b</code> · <code>[callee*="x"]</code> · <code>[path^="req.query"]</code> · <code>[fname=x]</code> · <code>[text~=/re/]</code> · <code>:has() :not() :contains()</code><br>
+          <b>Traversal</b> <code>.find .children .parent .parents .closest .next .prev .siblings .filter .not .has .first .last .eq</code>
+        </div>
+        <div id="qResults"></div>
+      </div></div>
+      <div class="col"><div class="detail" id="qView"><div class="empty">Click a result to open it in the source view.</div></div></div>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-ast">
+    <div class="split">
+      <div class="col left">
+        <div class="toolbar"><select id="astFile" style="flex:1"></select><label style="font-size:12px;color:var(--mute)"><input type="checkbox" id="astAll"> all nodes</label></div>
+        <div class="ast" id="astTree"></div>
+      </div>
+      <div class="col"><div class="detail" id="astView"><div class="empty">Pick a node to highlight it in the source.</div></div></div>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-queries"><div class="col" style="width:100%;padding-top:14px">
+    <div style="padding:0 14px 12px;display:flex;gap:8px;align-items:center"><button class="btn" id="reloadQ">Reload query files</button><span style="color:var(--mute)">Queries live in <code>queries/*.ts</code> — edit or add files, then reload.</span></div>
+    <div id="qList"></div>
+  </div></div>
+</main>
+
+<dialog id="dlg">
+  <div class="hd">New project</div>
+  <div class="bd">
+    <div class="seg" id="dSeg"><button class="btn on" data-m="path">Server path</button><button class="btn" data-m="folder">Upload folder</button><button class="btn" data-m="snippet">Paste code</button></div>
+    <input type="text" id="dName" placeholder="Project name">
+    <div id="dPath"><input type="text" id="dPathIn" placeholder="/absolute/path/on/the/server"><div style="color:var(--mute);font-size:12px;margin-top:4px">Read by the server process, so it must be reachable from where sastql runs.</div></div>
+    <div id="dFolder" hidden><input type="file" id="dFiles" webkitdirectory multiple><div style="color:var(--mute);font-size:12px;margin-top:4px">Only supported source files are sent (js, ts, py, php, java).</div></div>
+    <div id="dSnip" hidden><select id="dLang"></select><textarea id="dCode" rows="9" style="margin-top:8px;font-family:var(--mono)" spellcheck="false" placeholder="paste code…"></textarea></div>
+    <div id="dMsg" style="color:var(--mute);font-size:12px"></div>
+  </div>
+  <div class="ft"><button class="btn" id="dCancel">Cancel</button><button class="btn primary" id="dOk">Create &amp; index</button></div>
+</dialog>
+
+<script>
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const S = { info: null, projects: [], pid: null, files: [], fileByPath: {}, findings: [], sel: null, sev: new Set(), srcCache: {} };
+
+async function api(url, opt) {
+  const r = await fetch("/api" + url, opt && { ...opt, headers: { "content-type": "application/json" }, body: opt.body && JSON.stringify(opt.body) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || r.statusText);
+  return d;
+}
+function toast(msg, err) { const t = document.createElement("div"); t.className = "toast" + (err ? " err" : ""); t.textContent = msg; document.body.append(t); setTimeout(() => t.remove(), err ? 6000 : 2800); }
+const SEV = ["critical", "high", "medium", "low", "info"];
+
+/* ---------- theme ---------- */
+$("#themeBtn").onclick = () => { const r = document.documentElement; const cur = r.dataset.theme || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"); r.dataset.theme = cur === "dark" ? "light" : "dark"; try { localStorage.setItem("theme", r.dataset.theme); } catch {} };
+try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
+
+/* ---------- tabs ---------- */
+function tab(name) {
+  $$(".tab").forEach((t) => t.classList.toggle("active", t.dataset.tab === name));
+  $$(".pane").forEach((p) => p.classList.toggle("active", p.id === "pane-" + name));
+  if (name === "ast") loadAstFiles();
+}
+$("#tabs").onclick = (e) => { const t = e.target.closest(".tab"); if (t) tab(t.dataset.tab); };
+
+/* ---------- projects ---------- */
+async function loadProjects() {
+  S.projects = await api("/projects");
+  $("#projects").innerHTML = S.projects.length ? S.projects.map((p) => `
+    <div class="proj ${p.id === S.pid ? "active" : ""}" data-id="${p.id}">
+      <div class="n">${esc(p.name)}</div>
+      <div class="m">${p.files} files · ${p.nodes.toLocaleString()} nodes · ${p.findings} findings</div>
+      <div style="margin-top:4px;display:flex;gap:6px"><button class="btn sm" data-act="reindex" ${p.root ? "" : "disabled"}>re-index</button><button class="btn sm" data-act="del">delete</button></div>
+    </div>`).join("") : `<div style="color:var(--mute);font-size:13px">No projects yet.</div>`;
+}
+$("#projects").onclick = async (e) => {
+  const el = e.target.closest(".proj"); if (!el) return;
+  const id = +el.dataset.id, act = e.target.dataset.act;
+  try {
+    if (act === "del") { if (confirm("Delete this project and its stored AST?")) { await api("/projects/" + id, { method: "DELETE" }); if (S.pid === id) { S.pid = null; renderNone(); } await loadProjects(); } return; }
+    if (act === "reindex") { toast("Re-indexing…"); const r = await api(`/projects/${id}/reindex`, { method: "POST" }); toast(`Indexed ${r.files} files`); await loadProjects(); if (S.pid === id) await openProject(id); return; }
+    await openProject(id);
+  } catch (err) { toast(err.message, true); }
+};
+function renderNone() {
+  S.findings = []; S.files = []; renderFindings(); $("#scanBtn").disabled = $("#sarifBtn").disabled = true;
+  $("#findList").innerHTML = `<div class="empty"><h3>Welcome</h3>Create a project to index source code into Postgres as AST nodes, then scan it with the queries.<br><br><button class="btn primary" id="sampleBtn">Index the bundled sample</button></div>`;
+  $("#sampleBtn").onclick = () => createProject({ name: "sample (js, py, php, java)", path: S.info.sampleDir }, true);
+}
+async function openProject(id) {
+  S.pid = id; S.sel = null;
+  [S.files, S.findings] = await Promise.all([api(`/projects/${id}/files`), api(`/projects/${id}/findings`)]);
+  S.fileByPath = Object.fromEntries(S.files.map((f) => [f.path, f.id])); S.srcCache = {};
+  $("#scanBtn").disabled = $("#sarifBtn").disabled = false;
+  renderFindings(); await loadProjects();
+  $("#findDetail").innerHTML = `<div class="empty"><h3>No finding selected</h3>Select a finding to see the full source → sink path.</div>`;
+  if ($(".tab.active").dataset.tab === "ast") loadAstFiles();
+}
+async function createProject(body, scan) {
+  try {
+    toast("Indexing…"); const r = await api("/projects", { method: "POST", body });
+    toast(`Indexed ${r.files} files / ${r.nodes.toLocaleString()} nodes${r.errors?.length ? " · " + r.errors.length + " errors" : ""}`);
+    await loadProjects(); await openProject(r.id); if (scan) await runScan();
+  } catch (e) { toast(e.message, true); }
+}
+
+/* ---------- scan ---------- */
+async function runScan(queries) {
+  if (!S.pid) return;
+  $("#scanBtn").disabled = true; $("#scanBtn").textContent = "Scanning…";
+  try {
+    const r = await api(`/projects/${S.pid}/scan`, { method: "POST", body: { queries } });
+    const err = r.perQuery.filter((q) => q.error);
+    toast(`${r.findings.length} findings` + (err.length ? ` · ${err.length} queries failed: ${err.map((e) => e.id + ": " + e.error).join("; ")}` : ""), !!err.length);
+    S.findings = await api(`/projects/${S.pid}/findings`); renderFindings(); loadProjects();
+  } catch (e) { toast(e.message, true); }
+  $("#scanBtn").disabled = false; $("#scanBtn").textContent = "Run scan";
+}
+$("#scanBtn").onclick = () => runScan();
+$("#sarifBtn").onclick = () => window.open(`/api/projects/${S.pid}/sarif`);
+
+/* ---------- findings ---------- */
+function filtered() {
+  const q = $("#fQuery").value, l = $("#fLang").value, t = $("#fText").value.toLowerCase();
+  return S.findings.filter((f) => (!S.sev.size || S.sev.has(f.severity)) && (!q || f.queryId === q) && (!l || f.language === l) && (!t || (f.file + f.message + f.title + (f.sinkCode || "")).toLowerCase().includes(t)));
+}
+function renderFindings() {
+  $("#cFind").textContent = S.findings.length;
+  const counts = Object.fromEntries(SEV.map((s) => [s, S.findings.filter((f) => f.severity === s).length]));
+  $("#sevChips").innerHTML = SEV.filter((s) => counts[s]).map((s) => `<span class="chip sev-${s} ${S.sev.has(s) ? "on" : ""}" data-sev="${s}">${counts[s]} ${s}</span>`).join("");
+  const qs = [...new Set(S.findings.map((f) => f.queryId))], ls = [...new Set(S.findings.map((f) => f.language))];
+  const keepQ = $("#fQuery").value, keepL = $("#fLang").value;
+  $("#fQuery").innerHTML = `<option value="">all queries</option>` + qs.map((q) => `<option ${q === keepQ ? "selected" : ""}>${esc(q)}</option>`).join("");
+  $("#fLang").innerHTML = `<option value="">all languages</option>` + ls.map((q) => `<option ${q === keepL ? "selected" : ""}>${esc(q)}</option>`).join("");
+  const list = filtered();
+  $("#findList").innerHTML = list.length ? list.map((f) => `
+    <div class="f ${S.sel === f ? "active" : ""} sev-${f.severity}" data-i="${S.findings.indexOf(f)}"><span class="dot"></span>
+      <div><div class="t" style="color:var(--text)">${esc(f.title)} <span class="mono" style="color:var(--mute);font-weight:400;font-size:11px">${esc(f.cwe || "")}</span></div>
+      <div class="loc">${esc(f.file)}:${f.line}</div><div class="msg">${esc(f.message)}</div></div></div>`).join("")
+    : `<div class="empty">${S.findings.length ? "No findings match the filters." : S.pid ? "No findings yet — press <b>Run scan</b>." : ""}</div>`;
+}
+$("#sevChips").onclick = (e) => { const s = e.target.dataset.sev; if (!s) return; S.sev.has(s) ? S.sev.delete(s) : S.sev.add(s); renderFindings(); };
+["fQuery", "fLang"].forEach((id) => ($("#" + id).onchange = renderFindings)); $("#fText").oninput = renderFindings;
+$("#findList").onclick = (e) => { const el = e.target.closest(".f"); if (!el) return; S.sel = S.findings[+el.dataset.i]; renderFindings(); showFinding(S.sel); };
+
+const STEP_LABEL = { source: "Source", propagate: "Propagation", call: "Call", return: "Return", sink: "Sink", sanitizer: "Sanitizer" };
+async function showFinding(f) {
+  const steps = f.path || [];
+  $("#findDetail").innerHTML = `<div class="detail">
+    <h3>${esc(f.title)}</h3>
+    <div class="meta"><span class="pill sev-${f.severity}">${esc(f.severity)}</span><span class="pill">${esc(f.cwe || "")}</span><span class="pill">${esc(f.language)}</span><span class="pill">${esc(f.queryId)}</span></div>
+    <div style="margin-bottom:14px">${esc(f.message)}</div>
+    <h2>Data-flow path (${steps.length} steps)</h2>
+    <div class="path">${steps.map((s, i) => `
+      <div class="step k-${s.kind}" data-i="${i}"><span class="i">${i + 1}</span>
+        <div><div class="k">${STEP_LABEL[s.kind] || s.kind}</div><div class="code">${esc(s.code)}</div>
+        <div class="where">${esc(s.file)}:${s.line}${s.note ? " · " + esc(s.note) : ""}</div></div></div>`).join("")}</div>
+    <h2>Source</h2><div id="fSrc"></div></div>`;
+  $$("#findDetail .step").forEach((el) => (el.onclick = () => { $$("#findDetail .step").forEach((x) => x.classList.remove("active")); el.classList.add("active"); openCode($("#fSrc"), steps[+el.dataset.i].file, steps, steps[+el.dataset.i].line); }));
+  const last = steps.length - 1;
+  if (last >= 0) { $$("#findDetail .step")[last].classList.add("active"); openCode($("#fSrc"), steps[last].file, steps, steps[last].line); }
+}
+
+/* ---------- code viewer ---------- */
+async function getSource(path) {
+  const id = S.fileByPath[path]; if (!id) return null;
+  return (S.srcCache[id] ??= (await api(`/files/${id}/source`)).source);
+}
+async function openCode(host, path, steps = [], focus = 0, range) {
+  const src = await getSource(path);
+  if (src == null) { host.innerHTML = `<div style="color:var(--mute)">File not available.</div>`; return; }
+  const kinds = {}; for (const s of steps) if (s.file === path) kinds[s.line] = s.kind;
+  const lines = src.split("\n");
+  host.innerHTML = `<div class="code-view"><div class="code-head">${esc(path)}</div>${lines.map((l, i) => {
+    const n = i + 1, k = kinds[n], inR = range && n >= range[0] && n <= range[1];
+    return `<div class="ln ${k ? "hl-" + k : ""} ${inR ? "hl-propagate" : ""} ${n === focus ? "focus" : ""}" data-n="${n}"><span>${n}</span><span>${esc(l)}</span></div>`;
+  }).join("")}</div>`;
+  const el = host.querySelector(".focus"); if (el) { const v = host.querySelector(".code-view"); v.scrollTop = Math.max(0, el.offsetTop - v.clientHeight / 2); }
+}
+
+/* ---------- query console ---------- */
+const EXAMPLES = [
+  ["all calls to eval", `$("Call[callee=eval]")`],
+  ["db .query() calls", `$("Call[callee$='.query']")`],
+  ["enclosing function of a query", `$("Call[callee$='.query']").closest("Func")`],
+  ["string concat in call args", `$("Call").find("binary_expression:has(Str)")`],
+  ["user input reads", `$("Member[path^='req.query'], Member[path^='$_GET'], Member[path^='request.args']")`],
+  ["functions named run*", `$("Func[fname~=/^run/]")`],
+  ["returns inside functions", `$("Func").find("Return")`],
+];
+$("#qEx").innerHTML = EXAMPLES.map(([t, q], i) => `<span class="chip" data-i="${i}">${esc(t)}</span>`).join("");
+$("#qEx").onclick = (e) => { const i = e.target.dataset.i; if (i != null) { $("#qExpr").value = EXAMPLES[+i][1]; runQuery(); } };
+$("#qRun").onclick = runQuery;
+$("#qExpr").onkeydown = (e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") runQuery(); };
+async function runQuery() {
+  if (!S.pid) return toast("Open a project first", true);
+  try {
+    const r = await api(`/projects/${S.pid}/query`, { method: "POST", body: { expr: $("#qExpr").value } });
+    $("#qInfo").textContent = `${r.total} match${r.total === 1 ? "" : "es"} · ${r.ms} ms${r.total > r.rows.length ? ` · showing ${r.rows.length}` : ""}`;
+    window._rows = r.rows;
+    $("#qResults").innerHTML = `<table><tr><th>Location</th><th>Node</th><th>Text</th></tr>${r.rows.map((x, i) => `
+      <tr class="row" data-i="${i}"><td class="mono">${esc(x.file)}:${x.line}</td><td class="mono sev-low">${esc(x.type)}${x.field ? `<div style="color:var(--mute)">${esc(x.field)}:</div>` : ""}</td><td class="mono">${esc(x.text.split("\n")[0].slice(0, 90))}</td></tr>`).join("")}</table>`;
+  } catch (e) { $("#qInfo").textContent = ""; $("#qResults").innerHTML = `<div class="sev-critical mono" style="font-size:12.5px">${esc(e.message)}</div>`; }
+}
+$("#qResults").onclick = (e) => { const tr = e.target.closest("tr.row"); if (!tr) return; const r = window._rows[+tr.dataset.i]; $$("#qResults tr.row").forEach((x) => (x.style.background = "")); tr.style.background = "var(--panel2)"; openCode($("#qView"), r.file, [{ file: r.file, line: r.line, kind: "sink" }], r.line, [r.line, r.endLine]); };
+
+/* ---------- AST explorer ---------- */
+async function loadAstFiles() {
+  const sel = $("#astFile"); const cur = sel.value;
+  sel.innerHTML = S.files.map((f) => `<option value="${f.id}" ${String(f.id) === cur ? "selected" : ""}>${esc(f.path)} (${f.nodes})</option>`).join("");
+  if (S.files.length) renderAst(); else $("#astTree").innerHTML = `<div style="color:var(--mute)">Open a project first.</div>`;
+}
+$("#astFile").onchange = renderAst; $("#astAll").onchange = renderAst;
+async function renderAst() {
+  const id = $("#astFile").value; if (!id) return;
+  const ast = await api(`/files/${id}/ast?all=${$("#astAll").checked ? 1 : 0}`);
+  const path = S.files.find((f) => String(f.id) === id).path;
+  const mk = (n, open) => {
+    const wrap = document.createElement("div");
+    const row = document.createElement("div"); row.className = "row";
+    const has = !!n.c;
+    row.innerHTML = `<span class="tw">${has ? (open ? "▾" : "▸") : ""}</span>${n.f ? `<span class="fld">${esc(n.f)}: </span>` : ""}<span class="ty">${esc(n.t)}</span>${n.x != null && !has ? ` <span class="tx">“${esc(n.x.replace(/\n/g, "⏎"))}”</span>` : ""} <span class="tx">${n.sl}${n.el !== n.sl ? "–" + n.el : ""}</span>`;
+    wrap.append(row);
+    let kids = null;
+    const toggle = () => {
+      if (!has) return;
+      if (!kids) { kids = document.createElement("div"); kids.className = "nd"; n.c.forEach((c) => kids.append(mk(c, false))); wrap.append(kids); row.firstChild.textContent = "▾"; return; }
+      kids.hidden = !kids.hidden; row.firstChild.textContent = kids.hidden ? "▸" : "▾";
+    };
+    row.onclick = () => { toggle(); openCode($("#astView"), path, [], n.sl, [n.sl, n.el]); };
+    if (open && has) { kids = document.createElement("div"); kids.className = "nd"; n.c.forEach((c) => kids.append(mk(c, false))); wrap.append(kids); }
+    return wrap;
+  };
+  $("#astTree").replaceChildren(mk(ast, true));
+}
+
+/* ---------- queries tab ---------- */
+function renderQueries() {
+  $("#cQ").textContent = S.info.queries.length;
+  $("#qList").innerHTML = S.info.queries.map((q) => `
+    <div class="qcard"><h4>${esc(q.title)} <span class="pill sev-${q.severity}">${esc(q.severity)}</span><span class="pill">${esc(q.cwe || "")}</span><span class="pill">${esc(q.kind)}</span><span class="pill">${esc(q.id)}</span></h4>
+      <div style="color:var(--mute);margin:6px 0">${esc(q.description || "")}</div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${q.languages.map((l) => `<span class="chip">${esc(l)}</span>`).join("")}
+        <span class="spacer"></span><button class="btn sm" data-act="run" data-id="${esc(q.id)}">Scan with this query</button><button class="btn sm" data-act="src" data-id="${esc(q.id)}">View source</button></div>
+      <div class="srcbox"></div></div>`).join("");
+}
+$("#qList").onclick = async (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.act === "run") { if (!S.pid) return toast("Open a project first", true); tab("findings"); runScan([b.dataset.id]); }
+  if (b.dataset.act === "src") { const box = b.closest(".qcard").querySelector(".srcbox"); if (box.innerHTML) { box.innerHTML = ""; return; } const r = await api(`/queries/${b.dataset.id}/source`); box.innerHTML = `<pre class="src">${esc(r.source)}</pre>`; }
+};
+$("#reloadQ").onclick = async () => { await api("/queries/reload", { method: "POST" }); S.info = await api("/info"); renderQueries(); toast("Queries reloaded"); };
+
+/* ---------- new project dialog ---------- */
+const dlg = $("#dlg"); let dMode = "path";
+$("#newBtn").onclick = () => { $("#dMsg").textContent = ""; dlg.showModal(); };
+$("#dCancel").onclick = () => dlg.close();
+$("#dSeg").onclick = (e) => { const m = e.target.dataset.m; if (!m) return; dMode = m; $$("#dSeg .btn").forEach((b) => b.classList.toggle("on", b.dataset.m === m)); $("#dPath").hidden = m !== "path"; $("#dFolder").hidden = m !== "folder"; $("#dSnip").hidden = m !== "snippet"; };
+$("#dOk").onclick = async () => {
+  const name = $("#dName").value.trim();
+  try {
+    if (dMode === "path") { const p = $("#dPathIn").value.trim(); if (!p) return ($("#dMsg").textContent = "Enter a path."); dlg.close(); await createProject({ name: name || p.split("/").filter(Boolean).pop(), path: p }, true); }
+    else if (dMode === "folder") {
+      const exts = new Set(Object.values(S.info.exts).flat());
+      const files = [...$("#dFiles").files].filter((f) => exts.has("." + f.name.split(".").pop().toLowerCase()) && !/(^|\/)(node_modules|\.git|vendor|dist|build)\//.test(f.webkitRelativePath));
+      if (!files.length) return ($("#dMsg").textContent = "No supported source files selected.");
+      $("#dMsg").textContent = `Reading ${files.length} files…`;
+      const payload = await Promise.all(files.map(async (f) => ({ path: f.webkitRelativePath || f.name, content: await f.text() })));
+      dlg.close(); await createProject({ name: name || (files[0].webkitRelativePath || "upload").split("/")[0], files: payload }, true);
+    } else {
+      const code = $("#dCode").value; if (!code.trim()) return ($("#dMsg").textContent = "Paste some code.");
+      const lang = $("#dLang").value, ext = S.info.exts[lang][0];
+      dlg.close(); await createProject({ name: name || "snippet (" + lang + ")", files: [{ path: "snippet" + ext, content: code }] }, true);
+    }
+  } catch (e) { $("#dMsg").textContent = e.message; }
+};
+
+/* ---------- boot ---------- */
+(async function () {
+  try {
+    S.info = await api("/info");
+    $("#storePill").textContent = S.info.store === "postgres" ? "● postgres" : "● in-memory (no DATABASE_URL)";
+    $("#storePill").style.color = S.info.store === "postgres" ? "var(--src)" : "var(--med)";
+    $("#dLang").innerHTML = S.info.languages.map((l) => `<option>${l}</option>`).join("");
+    renderQueries(); await loadProjects();
+    if (S.projects.length) await openProject(S.projects[0].id); else renderNone();
+  } catch (e) { toast(e.message, true); }
+})();
+</script>
+</body>
+</html>
